@@ -145,6 +145,12 @@ class Scheduler(object):
         return False
 
     @staticmethod
+    def isAnyPackagesCurrentlyBuilding():
+        if Scheduler.listOfPackagesCurrentlyBuilding:
+            return True
+        return False
+
+    @staticmethod
     def getNextPackageToBuild():
         with Scheduler.lock:
             if Scheduler.stopScheduling:
@@ -163,7 +169,7 @@ class Scheduler(object):
             packageTup = Scheduler.listOfPackagesNextToBuild.get()
 
             package = packageTup[1]
-            if Scheduler.listOfPackagesNextToBuild.qsize() > 0:
+            if not constants.containerBuild and Scheduler.listOfPackagesNextToBuild.qsize() > 0:
                 ThreadPool.activateWorkerThreads(
                     Scheduler.listOfPackagesNextToBuild.qsize())
             Scheduler.listOfPackagesCurrentlyBuilding.add(package)

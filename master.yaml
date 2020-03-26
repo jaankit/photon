@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: master-service
+spec:
+  selector:
+    app: master
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: master
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: photon-master
+        image: photon:latest
+        ports:
+        - containerPort: 80
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: photon
+          mountPath: /root
+        - name: sys
+          mountPath: /sys
+          readOnly: false
+        workingDir: /root
+        command: ["/bin/bash"]
+        args: ["-c","tdnf remove -y toybox && \
+                     tdnf install -y build-essential createrepo texinfo wget \
+                     findutils python3-pip git && \
+                     pip3 install flask requests pyOpenSSL docker==2.3.0 && \
+                     chmod 755 /sys && \
+                     make packages CONTAINER_BUILD=enable"]
+      volumes:
+      - name: photon
+        persistentVolumeClaim:
+          claimName: photon
+      - name: sys
+        hostPath:
+          path: /sys
+  backoffLimit: 10

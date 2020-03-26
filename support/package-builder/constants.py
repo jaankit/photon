@@ -16,6 +16,7 @@ class constants(object):
     buildPatch = False
     inputRPMSPath = ""
     rpmCheck = False
+    containerBuild = False
     sourceRpmPath = ""
     publishBuildDependencies = False
     packageWeightsPath = None
@@ -407,6 +408,10 @@ class constants(object):
     @staticmethod
     def setRpmCheckStopOnError(rpmCheckStopOnError):
         constants.rpmCheckStopOnError = rpmCheckStopOnError
+
+    @staticmethod
+    def setContainerBuild(containerBuild):
+        constants.containerBuild = containerBuild
 
     @staticmethod
     def setPublishBuildDependencies(publishBuildDependencies):

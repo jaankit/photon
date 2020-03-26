@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 8
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      name: worker-pod
+      labels:
+        app: worker
+    spec:
+      containers:
+      - name: photon-worker
+        image: photon:latest
+        ports:
+        - containerPort: 80
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: rpms
+          mountPath: /root/stage/RPMS
+        - name: publishrpms
+          mountPath: /root/stage/PUBLISHRPMS
+        - name: publishxrpms
+          mountPath: /root/stage/PUBLISHXRPMS
+        - name: specs
+          mountPath: /root/SPECS
+        - name: logs
+          mountPath: /root/stage/LOGS
+        - name: builder
+          mountPath: /root/support/package-builder
+        - name: sys
+          mountPath: /sys
+          readOnly: false
+        workingDir: /root/support/package-builder
+        command: ["/bin/bash"]
+        args: ["-c", "tdnf remove -y toybox && \
+                      tdnf install -y python3 findutils python3-pip rpm util-linux && \
+                      pip3 install requests && \
+                      chmod 755 /sys && \
+                      python3 worker.py"]
+      volumes:
+      - name: rpms
+        persistentVolumeClaim:
+          claimName: rpms
+      - name: publishrpms
+        persistentVolumeClaim:
+          claimName: publishrpms
+      - name: publishxrpms
+        persistentVolumeClaim:
+          claimName: publishxrpms
+      - name: specs
+        persistentVolumeClaim:
+          claimName: specs
+      - name: logs
+        persistentVolumeClaim:
+          claimName: logs
+      - name: builder
+        persistentVolumeClaim:
+          claimName: builder
+      - name: sys
+        hostPath:
+          path: /sys

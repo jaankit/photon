@@ -1,6 +1,7 @@
 import os
 import threading
 import copy
+import SchedulerServer
 from PackageBuildDataGenerator import PackageBuildDataGenerator
 from Logger import Logger
 from constants import constants
@@ -175,19 +176,26 @@ class PackageManager(object):
             self.logger.error("Unable to set parameters. Terminating the package manager.")
             raise Exception("Unable to set parameters")
 
-        statusEvent = threading.Event()
-        self._initializeScheduler(statusEvent)
-        self._initializeThreadPool(statusEvent)
+        if constants.containerBuild:
+            self._initializeScheduler(None)
+            SchedulerServer.mapPackageToCycle = self.mapPackageToCycle
+            serverThread = threading.Thread(target=SchedulerServer.startServer)
+            serverThread.start()
+            serverThread.join()
+            Scheduler.stopScheduling = True
+        else:
+            statusEvent = threading.Event()
+            self._initializeScheduler(statusEvent)
+            self._initializeThreadPool(statusEvent)
+            for i in range(0, buildThreads):
+                workerName = "WorkerThread" + str(i)
+                ThreadPool.addWorkerThread(workerName)
+                ThreadPool.startWorkerThread(workerName)
 
-        for i in range(0, buildThreads):
-            workerName = "WorkerThread" + str(i)
-            ThreadPool.addWorkerThread(workerName)
-            ThreadPool.startWorkerThread(workerName)
-
-        statusEvent.wait()
-        Scheduler.stopScheduling = True
-        self.logger.debug("Waiting for all remaining worker threads")
-        ThreadPool.join_all()
+            statusEvent.wait()
+            Scheduler.stopScheduling = True
+            self.logger.debug("Waiting for all remaining worker threads")
+            ThreadPool.join_all()
 
         setFailFlag = False
         allPackagesBuilt = False

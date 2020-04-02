@@ -70,6 +70,7 @@ class Scheduler(object):
     event = None
     stopScheduling = False
     mapPackagesToGraphNodes = {}
+    coreToolChainBuild = False
 
     @staticmethod
     def setEvent(event):
@@ -223,6 +224,26 @@ class Scheduler(object):
     def _getRequiredPackages(pkg):
         return Scheduler.__getRequiredTypePackages(pkg, "install")
 
+    def _createCoreToolChainGraphNodes():
+        for package in Scheduler.sortedList:
+            packageName, packageVersion = StringUtils.splitPackageNameAndVersion(package)
+            node = DependencyGraphNode(packageName, packageVersion,
+                                       Scheduler._getWeight(package))
+            Scheduler.mapPackagesToGraphNodes[package] = node
+
+            if package in Scheduler.listOfAlreadyBuiltPackages:
+                node.built = 1
+
+        for index,package in enumerate(Scheduler.sortedList):
+            pkgNode = Scheduler.mapPackagesToGraphNodes[package]
+            for childPkg in Scheduler.sortedList[:index:]:
+                childPkgNode = Scheduler.mapPackagesToGraphNodes[childPkg]
+                pkgNode.childPkgNodes.add(childPkgNode)
+                childPkgNode.parentPkgNodes.add(pkgNode)
+
+        for package in Scheduler.sortedList:
+             pkgNode = Scheduler.mapPackagesToGraphNodes[package]
+             Scheduler.priorityMap[package] = pkgNode.criticalChainWeight
 
     def _createGraphNodes():
 
@@ -537,8 +558,11 @@ class Scheduler(object):
 
 
     def _buildGraph():
-        Scheduler._createGraphNodes()
-        Scheduler._optimizeGraph()
+        if Scheduler.coreToolChainBuild:
+             Scheduler._createCoreToolChainGraphNodes()
+        else:
+            Scheduler._createGraphNodes()
+            Scheduler._optimizeGraph()
         Scheduler._calculateCriticalChainWeights()
 
 
